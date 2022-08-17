@@ -1,0 +1,14 @@
+colorama==0.4.5
+commonmark==0.9.1
+Cython==0.29.32
+dill==0.3.5.1
+glumpy==1.2.0
+imgui==1.4.1
+numpy==1.23.2
+pyglet==1.5.26
+Pygments==2.13.0
+PyOpenGL==3.1.6
+rich==12.5.1
+sourceinspect==0.0.4
+taichi==1.1.0
+triangle==20220202
