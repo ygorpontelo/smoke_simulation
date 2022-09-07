@@ -1,5 +1,4 @@
 from glumpy import gl, gloo
-import numpy as np
 
 
 vertex      = 'shaders/quiver/quiver.vert'
@@ -33,6 +32,6 @@ class Quiver:
     
     def update_velocities(self, velocities):
         # send without ghost cells
-        v = velocities.to_numpy()[1:-1, 1:-1]
-        # v = velocities[1:-1, 1:-1]
+        # v = velocities.to_numpy()[1:-1, 1:-1]
+        v = velocities[1:-1, 1:-1]
         self.program["velocities"] = v.view(gloo.TextureFloat2D)

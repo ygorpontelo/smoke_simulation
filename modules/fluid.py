@@ -30,7 +30,7 @@ class Fluid:
         # external forces acting on velocity field
         self.external_forces = ti.field(ti.f32, shape=(2,))
         self.external_forces[0] = 0
-        self.external_forces[1] = 0.1
+        self.external_forces[1] = 0
 
         self.grid = Grid(cell_count, width, height) 
         self.vectors = Quiver(cell_count, self.velocity_field, width, height)
@@ -82,45 +82,46 @@ class Fluid:
     
     @ti.func
     def dens_step(self, dt: ti.f32):
-        self.difuse_step(dt)
+        self.difuse_step(dt*10)
         self.advect(dt, self.density_field)
     
     @ti.func
     def vel_step(self, dt: ti.f32):
         # self.add_forces(dt)
         self.difuse_vel_step(dt)
+        # self.project(self.velocity_field)
         self.advect_vel(dt, self.velocity_field)
         self.project(self.velocity_field)
     
     @ti.func
-    def update_bnd(self, value_field: ti.template()):
+    def update_bnd(self, original_field: ti.template(), value_field):
         # slicing doesn't work on fields
-        s = value_field.shape
+        s = original_field.shape
         
         # rows
         for i in range(s[1]):
-            value_field[0, i] = value_field[1, i]
-            value_field[s[0]-1, i] = value_field[s[0]-2, i]
+            original_field[0, i] = value_field[1, i]
+            original_field[s[0]-1, i] = value_field[s[0]-2, i]
         
         # cols
         for i in range(s[0]):
-            value_field[i, 0] = value_field[i, 1]
-            value_field[i, s[1]-1] = value_field[i, s[1]-2]
+            original_field[i, 0] = value_field[i, 1]
+            original_field[i, s[1]-1] = value_field[i, s[1]-2]
 
     @ti.func
-    def update_bnd_vel(self, value_field: ti.template()):
+    def update_bnd_vel(self, original_field: ti.template(), value_field):
         # slicing doesn't work on fields
-        s = value_field.shape
+        s = original_field.shape
         
         # rows
         for i in range(s[1]):
-            value_field[0, i] = [value_field[1, i][0], -value_field[1, i][1]]
-            value_field[s[0]-1, i] = [value_field[s[0]-2, i][0], -value_field[s[0]-2, i][1]]
+            original_field[0, i] = [value_field[1, i][0], -value_field[1, i][1]]
+            original_field[s[0]-1, i] = [value_field[s[0]-2, i][0], -value_field[s[0]-2, i][1]]
         
         # cols
         for i in range(s[0]):
-            value_field[i, 0] = [-value_field[i, 1][0], value_field[1, i][1]]
-            value_field[i, s[1]-1] = [-value_field[i, s[1]-2][0], value_field[i, s[1]-2][1]]
+            original_field[i, 0] = [-value_field[i, 1][0], value_field[1, i][1]]
+            original_field[i, s[1]-1] = [-value_field[i, s[1]-2][0], value_field[i, s[1]-2][1]]
 
     # density funcs
     @ti.func
@@ -144,8 +145,8 @@ class Fluid:
         # solve system with 20 iterations
         for _ in range(1):
             for it in range(20):
-                self.difuse(dt, self.density_field)
-                self.update_bnd(self.density_field)
+                self.difuse(dt/20.0, self.density_field)
+                self.update_bnd(self.density_field, self.density_field)
 
     @ti.func
     def advect(self, dt: ti.f32, d0):
@@ -194,7 +195,7 @@ class Fluid:
 
                 self.density_field[i, j] = v
     
-        self.update_bnd(self.density_field)
+        self.update_bnd(self.density_field, self.density_field)
     
     # velocity funcs
     @ti.func
@@ -223,8 +224,8 @@ class Fluid:
         # solve system with 20 iterations
         for _ in range(1):
             for it in range(20):
-                self.difuse_vel(dt, self.velocity_field)
-                self.update_bnd_vel(self.velocity_field)
+                self.difuse_vel(dt/20.0, self.velocity_field)
+                self.update_bnd_vel(self.velocity_field, self.velocity_field)
     
     @ti.func
     def advect_vel(self, dt, d0):
@@ -273,7 +274,7 @@ class Fluid:
                 
                 self.velocity_field[i, j] = v
                 
-        self.update_bnd_vel(self.velocity_field)
+        self.update_bnd_vel(self.velocity_field, self.velocity_field)
 
     @ti.func
     def project(self, prev_vel):
@@ -283,30 +284,33 @@ class Fluid:
             for j in range(1, s[1]-1):
                 prev_vel[i, j][1] = ( 
                     # divergence
-                    (
-                        (self.velocity_field[i, j+1][0] - self.velocity_field[i, j-1][0])/(-2*self.dx) + 
-                        (self.velocity_field[i+1, j][1] - self.velocity_field[i-1, j][1])/(-2*self.dy)
-                    )
+                    (self.velocity_field[i, j+1][0] - self.velocity_field[i, j-1][0]) / (-2.0*self.dx) + 
+                    (self.velocity_field[i+1, j][1] - self.velocity_field[i-1, j][1]) / (-2.0*self.dy)
                 )
-                prev_vel[i, j][0] = 0.0
-        self.update_bnd(prev_vel)
-
+                prev_vel[i, j][0] = 0
+        self.update_bnd(prev_vel, prev_vel)
+        
         # avoid parallel for in this case
         for _ in range(1):
             for it in range(20):
-                for i in range(1, s[0]-1):  
-                    for j in range(1, s[1]-1):
-                        prev_vel[i, j][0] = ( 
-                            prev_vel[i-1, j][0] + 
-                            prev_vel[i+1, j][0] + 
-                            prev_vel[i, j-1][0] + 
-                            prev_vel[i, j+1][0] +
-                            prev_vel[i, j][1]) / (4.0)
-                self.update_bnd(prev_vel)
-
+                self.proj_solver(s, prev_vel, prev_vel)
+                self.update_bnd(prev_vel, prev_vel)
+    
         for i in range(1, s[0]-1):
             for j in range(1, s[1]-1):
                 # gradient
-                self.velocity_field[i, j][0] -= (prev_vel[i, j+1][0] - prev_vel[i, j-1][0])/(2*self.dx)
-                self.velocity_field[i, j][1] -= (prev_vel[i+1, j][0] - prev_vel[i-1, j][0])/(2*self.dy)
-        self.update_bnd_vel(self.velocity_field)
+                self.velocity_field[i, j][0] -= (prev_vel[i, j+1][0] - prev_vel[i, j-1][0]) / (2.0*self.dx)
+                self.velocity_field[i, j][1] -= (prev_vel[i+1, j][0] - prev_vel[i-1, j][0]) / (2.0*self.dy)
+        self.update_bnd_vel(self.velocity_field, self.velocity_field)
+
+    @ti.func
+    def proj_solver(self, shape, original: ti.template(), value):
+        for i in range(1, shape[0]-1):  
+            for j in range(1, shape[1]-1):
+                original[i, j][0] = ( 
+                    value[i-1, j][0] + 
+                    value[i+1, j][0] + 
+                    value[i, j-1][0] + 
+                    value[i, j+1][0] +
+                    value[i, j][1]
+                ) / 4.0

@@ -1,20 +1,13 @@
-import sys
-
 import imgui
 from imgui.integrations.pyglet import PygletProgrammablePipelineRenderer
 
-import numpy as np
 
 from glumpy import app
 
-import taichi as ti
-# activate taichi runtime
-ti.init()
-
 # our modules
-from modules import fluid
+from modules import fluid_np as fluid
 
-np.set_printoptions(threshold=sys.maxsize)
+# np.set_printoptions(threshold=sys.maxsize)
 
 # Use pyglet as backend
 app.use("pyglet", major=4, minor=3)
@@ -22,7 +15,7 @@ app.use("pyglet", major=4, minor=3)
 # Constants
 WIDTH = 900
 HEIGHT = 900
-CELLS = 150
+CELLS = 64
 
 # create window with openGL context
 window = app.Window(WIDTH, HEIGHT)
@@ -72,15 +65,15 @@ def on_mouse_drag(x, y, dx, dy, buttons):
 
     # Case was right mouse button
     if buttons == 4:
-        radius = 5
+        radius = 1
         if x > WIDTH-radius:
             x = WIDTH-radius
-        if x < 0:
-            x = 0+radius
+        if x < radius:
+            x = radius
         if y > HEIGHT-radius:
             y = HEIGHT-radius
-        if y < 0:
-            y = 0+radius
+        if y < radius:
+            y = radius
         
         idrow = int(y/smoke_grid.dx) + 1
         idcol = int(x/smoke_grid.dy) + 1
@@ -89,19 +82,19 @@ def on_mouse_drag(x, y, dx, dy, buttons):
             idx = idrow + i
             for j in range(-radius, radius):
                 idy = idcol + j
-                smoke_grid.density_field[idx, idy] = 10
+                smoke_grid.density_field[idx, idy] = 1.0
 
     # Case was left mouse button
     if buttons == 1:
-        radius = 3
+        radius = 1
         if x > WIDTH-radius:
             x = WIDTH-radius
-        if x < 0:
-            x = 0+radius
+        if x < radius:
+            x = radius
         if y > HEIGHT-radius:
             y = HEIGHT-radius
-        if y < 0:
-            y = 0+radius
+        if y < radius:
+            y = radius
         
         idrow = int(y/smoke_grid.dx) + 1
         idcol = int(x/smoke_grid.dy) + 1
@@ -110,7 +103,7 @@ def on_mouse_drag(x, y, dx, dy, buttons):
             idx = idrow + i
             for j in range(-radius, radius):
                 idy = idcol + j
-                speed = 2000
+                speed = 100
                 smoke_grid.velocity_field[idx, idy] = [
                     speed*dx, speed*-dy
                 ]

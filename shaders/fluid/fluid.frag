@@ -9,5 +9,5 @@ uniform vec2 scale;
 void main()
 {
     float v = texture2D(density, gl_FragCoord.xy*scale).r;
-    gl_FragColor = vec4(FillColor, v/10.0);
+    gl_FragColor = vec4(FillColor, v);
 }
