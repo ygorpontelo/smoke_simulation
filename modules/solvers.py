@@ -14,10 +14,11 @@ def dens_step(dt, dx, dy, width, height, density_field, velocity_field):
 def vel_step(dt, dx, dy, width, height, velocity_field):
     # self.add_forces(dt)
     difuse_vel_step(dt, velocity_field)
-    # self.project()
     advect_vel(dt, dx, dy, width, height, velocity_field)
     project(dx, dy, velocity_field)
 
+
+##### Boundaries funcs #####
 @njit
 def update_bnd(original_field):
     # slicing doesn't work on fields
@@ -48,7 +49,7 @@ def update_bnd_vel(original_field):
         original_field[i, s[1]-1] = [-value_field[i, s[1]-2, 0], value_field[i, s[1]-2, 1]]
 
 
-# density funcs
+###### density funcs #####
 @njit(parallel=True)
 def difuse(dt, density_field):
     s = density_field.shape
@@ -57,13 +58,12 @@ def difuse(dt, density_field):
 
     for i in prange(1, s[0]-1):
         for j in range(1, s[1]-1):
-            v = (
+            density_field[i, j] = (
                 x0[i, j] + a *
                 (
                     (x0[i-1, j] + x0[i+1, j] + x0[i, j-1] + x0[i, j+1])/(4.0)
                 )
             ) / (1+a)
-            density_field[i, j] = v
 
 @njit
 def difuse_step(dt, density_field):
@@ -116,13 +116,17 @@ def advect(dt, dx, dy, width, height, density_field, velocity_field):
 
             z1 = (1 - kx) * d0[i0, j0] + kx * d0[i0, j0+1]
             z2 = (1 - kx) * d0[i0+1, j0] + kx * d0[i0+1, j0+1]
-            v = (1 - ky) * z1 + ky * z2
 
-            density_field[i, j] = v
+            density_field[i, j] = (1 - ky) * z1 + ky * z2
 
     update_bnd(density_field)
 
-# velocity funcs
+@njit
+def map_density_to_vertex():
+    ...
+
+
+##### velocity funcs #####
 @njit(parallel=True)
 def difuse_vel(dt, velocity_field):
     s = velocity_field.shape
@@ -131,13 +135,12 @@ def difuse_vel(dt, velocity_field):
 
     for i in prange(1, s[0]-1):
         for j in range(1, s[1]-1):
-            v = (
+            velocity_field[i, j] = (
                 x0[i, j] + a *
                 (
                     (x0[i-1, j] + x0[i+1, j] + x0[i, j-1] + x0[i, j+1])/(4.0)
                 )
             ) / (1+a)
-            velocity_field[i, j] = v
 
 @njit
 def difuse_vel_step(dt, velocity_field):
@@ -190,9 +193,8 @@ def advect_vel(dt, dx, dy, width, height, velocity_field):
 
             z1 = (1 - kx) * d0[i0, j0] + kx * d0[i0, j0+1]
             z2 = (1 - kx) * d0[i0+1, j0] + kx * d0[i0+1, j0+1]
-            v = (1 - ky) * z1 + ky * z2
             
-            velocity_field[i, j] = v
+            velocity_field[i, j] = (1 - ky) * z1 + ky * z2
             
     update_bnd_vel(velocity_field)
 
@@ -230,3 +232,11 @@ def project(dx, dy, velocity_field):
             velocity_field[i, j][0] -= (prev_vel[i, j+1][0] - prev_vel[i, j-1][0]) / (2.0*dx)
             velocity_field[i, j][1] -= (prev_vel[i+1, j][0] - prev_vel[i-1, j][0]) / (2.0*dy)
     update_bnd_vel(velocity_field)
+
+
+##### Solvers #####
+def gauss_siedel():
+    ...
+
+def jacobi():
+    ...

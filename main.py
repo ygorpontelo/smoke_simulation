@@ -1,13 +1,11 @@
 import imgui
 from imgui.integrations.pyglet import PygletProgrammablePipelineRenderer
 
-
 from glumpy import app
 
 # our modules
-from modules import fluid_np as fluid
+from modules import fluid
 
-# np.set_printoptions(threshold=sys.maxsize)
 
 # Use pyglet as backend
 app.use("pyglet", major=4, minor=3)
@@ -15,7 +13,7 @@ app.use("pyglet", major=4, minor=3)
 # Constants
 WIDTH = 900
 HEIGHT = 900
-CELLS = 64
+CELLS = 128
 
 # create window with openGL context
 window = app.Window(WIDTH, HEIGHT)
@@ -65,7 +63,7 @@ def on_mouse_drag(x, y, dx, dy, buttons):
 
     # Case was right mouse button
     if buttons == 4:
-        radius = 1
+        radius = 3
         if x > WIDTH-radius:
             x = WIDTH-radius
         if x < radius:
@@ -86,7 +84,7 @@ def on_mouse_drag(x, y, dx, dy, buttons):
 
     # Case was left mouse button
     if buttons == 1:
-        radius = 1
+        radius = 2
         if x > WIDTH-radius:
             x = WIDTH-radius
         if x < radius:

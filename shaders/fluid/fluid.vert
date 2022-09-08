@@ -1,4 +1,7 @@
 attribute vec2 position;
+attribute float densitypoint;
+
+varying density;
 
 void main()
 {
