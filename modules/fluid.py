@@ -40,12 +40,7 @@ class Fluid:
     
         self.program = gloo.Program(vertex, fragment, count=4)
         
-        self.program["position"] = (
-            (-1, -1), 
-            (-1, +1), 
-            (+1, -1), 
-            (+1, +1),
-        )
+        self.program["position"] = self.calculate_vertex_field()
 
         self.update_smoke_color()
         self.update_density()
@@ -70,6 +65,30 @@ class Fluid:
     def update_fields(self):
         self.vectors.update_velocities(self.velocity_field)
         self.update_density()
+    
+    def calculate_vertex_field(self):
+
+        def convert_pos(pos, max_value):
+            return (2*pos-max_value)/max_value
+        
+        vertexes = np.zeros(shape=(self.cell_count+2, self.cell_count+2))
+        
+        for i in range(self.cell_count):
+            for j in range(self.cell_count):
+                # pos = 0 -> -1
+                # pos = 1/2*width -> 0
+                # pos = width -> 1
+                # (2*pos-width)/width
+                # same for height
+                pos = j*self.dx + self.dx/2, self.height - (i*self.dy + self.dy/2)
+                pos = convert_pos(pos[0], self.width), convert_pos(pos[1], self.height)
+                vertexes[i+1, j+1] = pos
+            vertexes[i+1, 0] = (-1, vertexes[i+1, 1][1])
+            vertexes[i+1, -1] = (1, vertexes[i+1, -2][1])
+
+        for i in range(self.cell_count+2):
+            ...
+        
 
     def solve_fields(self, dt):
         solvers.solve_fields(
