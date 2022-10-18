@@ -47,7 +47,7 @@ class Fluid:
         self.program = gloo.Program(vertex, fragment, count=(cell_count+2)**2, version="430")
         
         # set vertex coords
-        self.program["position"] = self.calculate_vertex_field().view(gloo.VertexBuffer)
+        self.program["position"] = self.calculate_vertex_field()
 
         # set index on coords
         # this tells opengl how to draw the triangles
@@ -120,7 +120,7 @@ class Fluid:
             return (2*pos-max_value)/max_value
         
         # coord matrix
-        vertexes = np.zeros(shape=(self.cell_count+2, self.cell_count+2, 2))
+        vertexes = np.zeros(shape=(self.cell_count+2, self.cell_count+2, 2), dtype=np.float32)
         
         # calculate coords, ghost cells can be included
         for i in range(-1, self.cell_count + 1):
