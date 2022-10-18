@@ -27,6 +27,7 @@ class Fluid:
         self.density_field  = np.zeros(shape=(cell_count+2, cell_count+2), dtype=np.float32)
 
         # external forces acting on velocity field
+        # our case is primary the mouse, so no initial forces
         self.external_forces = np.zeros(shape=(2,), dtype=np.float32)
         self.external_forces[0] = 0
         self.external_forces[1] = 0
@@ -42,12 +43,23 @@ class Fluid:
     
         # opengl program for the smoke
         # count is number of vertexes
+        # need to specify glsl version
         self.program = gloo.Program(vertex, fragment, count=(cell_count+2)**2, version="430")
         
         # set vertex coords
-        self.program["position"] = self.calculate_vertex_field()
+        self.program["position"] = self.calculate_vertex_field().view(gloo.VertexBuffer)
 
+        # set index on coords
+        # this tells opengl how to draw the triangles
         self.index_buffer = self.calculate_index().view(gloo.IndexBuffer)
+
+        # config initial spacial view
+        view = np.eye(4)
+        glm.translate(view, 0, 0, -2.4)
+        self.view_matrix = [0, 0,-2.4]
+        self.program['u_model'] = np.eye(4)
+        self.program['u_view'] = view
+        self.program['u_projection'] = glm.perspective(45.0, 1, 2.0, 100.0)
 
         # initial value update
         self.update_smoke_color()
@@ -55,7 +67,6 @@ class Fluid:
 
     def draw(self):
         # draw smoke first
-        # self.program.draw(gl.GL_POINTS)
         self.program.draw(gl.GL_TRIANGLES, self.index_buffer)
 
         # controls after
@@ -69,7 +80,6 @@ class Fluid:
         self.program["FillColor"] = self.smoke_color
 
     def update_density(self):
-        # no_ghost = self.density_field[1:-1, 1:-1]
         self.program["density"] = self.density_field.flatten()
 
     def update_fields(self):
@@ -77,6 +87,11 @@ class Fluid:
 
         self.vectors.update_velocities(self.velocity_field)
         self.update_density()
+    
+    def update_view_matrix(self):
+        self.program["u_view"] = glm.translate(
+            np.eye(4), self.view_matrix[0], self.view_matrix[1], self.view_matrix[2]
+        )
 
     def solve_fields(self, dt):
         """Call solver for the fields"""
@@ -107,7 +122,7 @@ class Fluid:
         # coord matrix
         vertexes = np.zeros(shape=(self.cell_count+2, self.cell_count+2, 2))
         
-        # calculate on inner grid
+        # calculate coords, ghost cells can be included
         for i in range(-1, self.cell_count + 1):
             for j in range(-1, self.cell_count + 1):
                 # calculate position of vertex and normalize
@@ -119,6 +134,8 @@ class Fluid:
         return np.array([vert for row in vertexes for vert in row])
 
     def calculate_index(self):
+        """Generate array with index information"""
+
         size = self.cell_count+2
         indices = np.zeros((size-1)**2*6, dtype=np.uint32)
         index = 0
@@ -135,5 +152,3 @@ class Fluid:
 
         return indices
 
-    def update_view_matrix(self):
-        self.program["u_view"] = glm.translate(np.eye(4), self.view_matrix[0], self.view_matrix[1], self.view_matrix[2])

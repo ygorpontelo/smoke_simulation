@@ -2,20 +2,19 @@ import imgui
 from imgui.integrations.pyglet import PygletProgrammablePipelineRenderer
 
 from glumpy import app
-from glumpy import gl, glm
-import numpy as np
 
 # our modules
 from modules import fluid
 
 
 # Use pyglet as backend
+# using opengl 4.3
 app.use("pyglet", major=4, minor=3)
 
 # Constants
-WIDTH = 800
-HEIGHT = 800
-CELLS = 132
+WIDTH = 900
+HEIGHT = 900
+CELLS = 128
 
 # create window with openGL context
 window = app.Window(WIDTH, HEIGHT)
@@ -27,16 +26,8 @@ imgui_renderer = PygletProgrammablePipelineRenderer(window.native_window) # pass
 # main object
 smoke_grid = fluid.Fluid(WIDTH, HEIGHT, CELLS)
 
+# draw only lines, no rasterization, good for tests
 # gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE)
-
-view = np.eye(4)
-model = np.eye(4)
-projection = glm.perspective(45.0, 1, 2.0, 100.0)
-glm.translate(view, 0, 0, -2.4)
-smoke_grid.view_matrix = [0, 0,-2.4]
-smoke_grid.program['u_model'] = model
-smoke_grid.program['u_view'] = view
-smoke_grid.program['u_projection'] = projection
 
 
 @window.event

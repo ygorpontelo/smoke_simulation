@@ -1,3 +1,9 @@
+"""
+Implementation of functions to solve the fields.
+
+Using numba for performance.
+"""
+
 from numba import njit, prange
 
 
@@ -15,6 +21,7 @@ def dens_step(dt, dx, dy, width, height, density_field, velocity_field):
 def vel_step(dt, dx, dy, width, height, velocity_field):
     # add forces is the mouse in our case
     # self.add_forces(dt)
+    # two projections increase stability
     difuse_vel_step(dt, velocity_field)
     project(dx, dy, velocity_field)
     advect_vel(dt, dx, dy, width, height, velocity_field)
@@ -24,7 +31,6 @@ def vel_step(dt, dx, dy, width, height, velocity_field):
 ##### Boundaries funcs #####
 @njit
 def update_bnd(original_field):
-    # slicing doesn't work on fields
     s = original_field.shape
     value_field = original_field.copy()
     
@@ -53,7 +59,7 @@ def update_bnd_vel(original_field):
 
 
 ###### density funcs #####
-@njit(parallel=True)
+@njit(parallel=True, fastmath=True)
 def difuse(dt, density_field):
     s = density_field.shape
     a = dt
@@ -75,7 +81,7 @@ def difuse_step(dt, density_field):
         difuse(dt/20.0, density_field)
         update_bnd(density_field)
 
-@njit(parallel=True)
+@njit(parallel=True, fastmath=True)
 def advect(dt, dx, dy, width, height, density_field, velocity_field):
     s = density_field.shape
     d0 = density_field.copy()
@@ -124,13 +130,9 @@ def advect(dt, dx, dy, width, height, density_field, velocity_field):
 
     update_bnd(density_field)
 
-@njit
-def map_density_to_vertex():
-    ...
-
 
 ##### velocity funcs #####
-@njit(parallel=True)
+@njit(parallel=True, fastmath=True)
 def difuse_vel(dt, velocity_field):
     s = velocity_field.shape
     a = dt
@@ -152,7 +154,7 @@ def difuse_vel_step(dt, velocity_field):
         difuse_vel(dt/20.0, velocity_field)
         update_bnd_vel(velocity_field)
 
-@njit(parallel=True)
+@njit(parallel=True, fastmath=True)
 def advect_vel(dt, dx, dy, width, height, velocity_field):
     s = velocity_field.shape
     d0 = velocity_field.copy()
@@ -201,7 +203,7 @@ def advect_vel(dt, dx, dy, width, height, velocity_field):
             
     update_bnd_vel(velocity_field)
 
-@njit(parallel=True)
+@njit(parallel=True, fastmath=True)
 def project(dx, dy, velocity_field):
     s = velocity_field.shape
     prev_vel = velocity_field.copy()
@@ -216,6 +218,7 @@ def project(dx, dy, velocity_field):
             prev_vel[i, j][0] = 0
     update_bnd(prev_vel)
     
+    # solve div system
     for it in range(20):
         value = prev_vel.copy()
         for i in prange(1, s[0]-1):  
