@@ -1,6 +1,7 @@
 from numba import njit, prange
 
 
+##### Exposed funcs #####
 def solve_fields(dt, dx, dy, width, height, density_field, velocity_field):
     vel_step(dt, dx, dy, width, height, velocity_field)
     dens_step(dt, dx, dy, width, height, density_field, velocity_field)
@@ -12,8 +13,10 @@ def dens_step(dt, dx, dy, width, height, density_field, velocity_field):
 
 
 def vel_step(dt, dx, dy, width, height, velocity_field):
+    # add forces is the mouse in our case
     # self.add_forces(dt)
     difuse_vel_step(dt, velocity_field)
+    project(dx, dy, velocity_field)
     advect_vel(dt, dx, dy, width, height, velocity_field)
     project(dx, dy, velocity_field)
 
@@ -50,7 +53,7 @@ def update_bnd_vel(original_field):
 
 
 ###### density funcs #####
-@njit(parallel=True, fastmath=True)
+@njit(parallel=True)
 def difuse(dt, density_field):
     s = density_field.shape
     a = dt
@@ -72,7 +75,7 @@ def difuse_step(dt, density_field):
         difuse(dt/20.0, density_field)
         update_bnd(density_field)
 
-@njit(parallel=True, fastmath=True)
+@njit(parallel=True)
 def advect(dt, dx, dy, width, height, density_field, velocity_field):
     s = density_field.shape
     d0 = density_field.copy()
@@ -127,7 +130,7 @@ def map_density_to_vertex():
 
 
 ##### velocity funcs #####
-@njit(parallel=True, fastmath=True)
+@njit(parallel=True)
 def difuse_vel(dt, velocity_field):
     s = velocity_field.shape
     a = dt
@@ -149,7 +152,7 @@ def difuse_vel_step(dt, velocity_field):
         difuse_vel(dt/20.0, velocity_field)
         update_bnd_vel(velocity_field)
 
-@njit(parallel=True, fastmath=True)
+@njit(parallel=True)
 def advect_vel(dt, dx, dy, width, height, velocity_field):
     s = velocity_field.shape
     d0 = velocity_field.copy()
@@ -198,7 +201,7 @@ def advect_vel(dt, dx, dy, width, height, velocity_field):
             
     update_bnd_vel(velocity_field)
 
-@njit(parallel=True, fastmath=True)
+@njit(parallel=True)
 def project(dx, dy, velocity_field):
     s = velocity_field.shape
     prev_vel = velocity_field.copy()

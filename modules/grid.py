@@ -11,7 +11,7 @@ class Grid:
         self.dx = 1
         self.dy = 1
 
-        self.program = gloo.Program(vertex, fragment, count=4)
+        self.program = gloo.Program(vertex, fragment, count=4, version="430")
 
         self.program['position'] = (
             (-self.dx,-self.dy), 

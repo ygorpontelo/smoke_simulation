@@ -1,8 +1,9 @@
-uniform vec3 FillColor;
+in vec4 color;
 
-input float density;
+out vec4 fragcolor;
 
 void main()
 {
-    gl_FragColor = vec4(FillColor, density);
+    //gl_FragColor = color;
+    fragcolor = color;
 }

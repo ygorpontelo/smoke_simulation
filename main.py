@@ -2,6 +2,8 @@ import imgui
 from imgui.integrations.pyglet import PygletProgrammablePipelineRenderer
 
 from glumpy import app
+from glumpy import gl, glm
+import numpy as np
 
 # our modules
 from modules import fluid
@@ -11,9 +13,9 @@ from modules import fluid
 app.use("pyglet", major=4, minor=3)
 
 # Constants
-WIDTH = 900
-HEIGHT = 900
-CELLS = 128
+WIDTH = 800
+HEIGHT = 800
+CELLS = 132
 
 # create window with openGL context
 window = app.Window(WIDTH, HEIGHT)
@@ -24,6 +26,17 @@ imgui_renderer = PygletProgrammablePipelineRenderer(window.native_window) # pass
 
 # main object
 smoke_grid = fluid.Fluid(WIDTH, HEIGHT, CELLS)
+
+# gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE)
+
+view = np.eye(4)
+model = np.eye(4)
+projection = glm.perspective(45.0, 1, 2.0, 100.0)
+glm.translate(view, 0, 0, -2.4)
+smoke_grid.view_matrix = [0, 0,-2.4]
+smoke_grid.program['u_model'] = model
+smoke_grid.program['u_view'] = view
+smoke_grid.program['u_projection'] = projection
 
 
 @window.event
@@ -48,6 +61,11 @@ def on_draw(dt):
     if changed:
         smoke_grid.update_smoke_color()
 
+    changed,  vm = imgui.drag_float3("View Matrix", *smoke_grid.view_matrix, change_speed=0.01)
+    smoke_grid.view_matrix = list(vm)
+    if changed:
+        smoke_grid.update_view_matrix()
+
     imgui.end()
 
     # render gui on top of everything
@@ -64,46 +82,51 @@ def on_mouse_drag(x, y, dx, dy, buttons):
     # Case was right mouse button
     if buttons == 4:
         radius = 3
-        if x > WIDTH-radius:
-            x = WIDTH-radius
-        if x < radius:
-            x = radius
-        if y > HEIGHT-radius:
-            y = HEIGHT-radius
-        if y < radius:
-            y = radius
         
-        idrow = int(y/smoke_grid.dx) + 1
+        # will be inverted in opengl
+        idrow = CELLS - (int(y/smoke_grid.dx) + 1)
         idcol = int(x/smoke_grid.dy) + 1
+
+        if idrow-radius < 0:
+            idrow = radius
+        elif idrow+radius > CELLS-1:
+            idrow = CELLS-1-radius
+        
+        if idcol-radius < 0:
+            idcol = radius
+        elif idcol+radius > CELLS-1:
+            idcol = CELLS-1-radius
         
         for i in range(-radius, radius):
             idx = idrow + i
             for j in range(-radius, radius):
                 idy = idcol + j
-                smoke_grid.density_field[idx, idy] = 1.0
+                smoke_grid.density_field[idx, idy] = 1
 
     # Case was left mouse button
     if buttons == 1:
-        radius = 2
-        if x > WIDTH-radius:
-            x = WIDTH-radius
-        if x < radius:
-            x = radius
-        if y > HEIGHT-radius:
-            y = HEIGHT-radius
-        if y < radius:
-            y = radius
+        radius = 4
+    
+        idrow = CELLS - (int(y/smoke_grid.dx))
+        idcol = int(x/smoke_grid.dy)
+
+        if idrow-radius < 0:
+            idrow = radius
+        elif idrow+radius > CELLS-1:
+            idrow = CELLS-1-radius
         
-        idrow = int(y/smoke_grid.dx) + 1
-        idcol = int(x/smoke_grid.dy) + 1
+        if idcol-radius < 0:
+            idcol = radius
+        elif idcol+radius > CELLS-1:
+            idcol = CELLS-1-radius
 
         for i in range(-radius, radius):
             idx = idrow + i
             for j in range(-radius, radius):
                 idy = idcol + j
-                speed = 100
+                speed = 1000
                 smoke_grid.velocity_field[idx, idy] = [
-                    speed*dx, speed*-dy
+                    speed*dx, speed*dy
                 ]
 
 @window.event
@@ -111,6 +134,13 @@ def on_show():
     # disable resize on show
     window.native_window.set_minimum_size(WIDTH, HEIGHT)
     window.native_window.set_maximum_size(WIDTH, HEIGHT)
+
+
+@window.event    
+def on_mouse_scroll(x, y, dx, dy):
+    'The mouse wheel was scrolled by (dx,dy).'
+    smoke_grid.view_matrix[-1] -= dy*0.1   
+    smoke_grid.update_view_matrix()
 
 
 if __name__ == "__main__":
