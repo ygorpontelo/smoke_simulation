@@ -1,4 +1,4 @@
-attribute vec2 position;
+in vec2 position;
 
 void main()
 {

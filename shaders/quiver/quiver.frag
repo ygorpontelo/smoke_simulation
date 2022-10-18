@@ -10,6 +10,8 @@ uniform int dim_y;
 
 uniform sampler2D velocities;
 
+out vec4 fragcolor;
+
 
 void main()
 {
@@ -17,7 +19,7 @@ void main()
     const float SQRT_2 = 1.4142135623730951;
     const float antialias = 1.0;
 
-    float body = min(iResolution.x/dim_y, iResolution.y/dim_x) / SQRT_2;
+    float body = min(iResolution.x/dim_x, iResolution.y/dim_y) / SQRT_2;
     vec2 texcoord = gl_FragCoord.xy;
     vec2 size   = iResolution / vec2(dim_y, dim_x);
     vec2 center = (floor(texcoord/size) + vec2(0.5, 0.5)) * size;
@@ -25,13 +27,13 @@ void main()
     texcoord -= center;
 
     float idrow = gl_FragCoord.x / size.x;
-    float idcol = gl_FragCoord.y / size.y; 
+    float idcol = (iResolution.y - gl_FragCoord.y) / size.y; 
 
     vec2 pos = vec2(idrow, idcol) * vec2(1.0/dim_x, 1.0/dim_y);
     float u = texture2D(velocities, pos).r;
     float v = texture2D(velocities, pos).g;
 
-    float theta = M_PI-atan(-v, -u);
+    float theta = M_PI-atan(v, -u);
     float cos_theta = cos(theta);
     float sin_theta = sin(theta);
 
@@ -39,5 +41,5 @@ void main()
                     sin_theta*texcoord.x + cos_theta*texcoord.y);
 
     float d = arrow_stealth(texcoord, body, 0.25*body, linewidth, antialias);
-    gl_FragColor = filled(d, linewidth, antialias, vec4(1,1,1,1));
+    fragcolor = filled(d, linewidth, antialias, vec4(1,1,1,1));
 }
