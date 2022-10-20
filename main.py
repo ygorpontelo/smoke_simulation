@@ -1,3 +1,5 @@
+import pyglet
+
 import imgui
 from imgui.integrations.pyglet import PygletProgrammablePipelineRenderer
 
@@ -21,7 +23,9 @@ window = app.Window(WIDTH, HEIGHT)
 
 # create renderer of imgui on window
 imgui.create_context()
-imgui_renderer = PygletProgrammablePipelineRenderer(window.native_window) # pass native pyglet window
+imgui_renderer = PygletProgrammablePipelineRenderer(window.native_window) # pass native pyglet window.
+
+fps_display = pyglet.window.FPSDisplay(window=window.native_window)
 
 # main object
 smoke_grid = fluid.Fluid(WIDTH, HEIGHT, CELLS)
@@ -33,6 +37,8 @@ smoke_grid = fluid.Fluid(WIDTH, HEIGHT, CELLS)
 @window.event
 def on_draw(dt):
     window.clear()
+
+    fps_display.draw()
 
     smoke_grid.update_fields()
     smoke_grid.solve_fields(dt)
@@ -96,7 +102,7 @@ def on_mouse_drag(x, y, dx, dy, buttons):
 
     # Case was left mouse button
     if buttons == 1:
-        radius = 4
+        radius = 2
     
         idrow = CELLS - (int(y/smoke_grid.dx))
         idcol = int(x/smoke_grid.dy)
@@ -116,7 +122,7 @@ def on_mouse_drag(x, y, dx, dy, buttons):
             for j in range(-radius, radius):
                 idy = idcol + j
                 speed = 1000
-                smoke_grid.velocity_field[idx, idy] = [
+                smoke_grid.velocity_field[idx, idy] += [
                     speed*dx, speed*dy
                 ]
 
