@@ -34,8 +34,9 @@ smoke_grid = fluid.Fluid(WIDTH, HEIGHT, CELLS)
 # gl.glPolygonMode(gl.GL_FRONT_AND_BACK, gl.GL_LINE)
 
 
+# dt default value avoids exception error
 @window.event
-def on_draw(dt):
+def on_draw(dt=0):
     window.clear()
 
     fps_display.draw()
@@ -75,6 +76,10 @@ def on_draw(dt):
 @window.event
 def on_mouse_drag(x, y, dx, dy, buttons):
     """The mouse was moved with some buttons pressed."""
+
+    # if mouse is on imgui window dont capture input
+    if imgui.get_io().want_capture_mouse:
+        return
 
     # Case was right mouse button
     if buttons == 4:
