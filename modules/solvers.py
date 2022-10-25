@@ -65,7 +65,7 @@ def update_bnd_vel(original_field):
 @njit(parallel=True)
 def difuse(dt, density_field):
     s = density_field.shape
-    a = dt * 5.0
+    a = dt * 2.0
     x0 = density_field.copy()
 
     for i in prange(1, s[0]-1):

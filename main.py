@@ -39,20 +39,22 @@ smoke_grid = fluid.Fluid(WIDTH, HEIGHT, CELLS)
 def on_draw(dt=0):
     window.clear()
 
-    fps_display.draw()
-
     smoke_grid.update_fields()
     smoke_grid.solve_fields(dt)
 
     # draw smoke first
     smoke_grid.draw()
 
+    if smoke_grid.show_fps:
+        fps_display.draw()
+    
     # Imgui Interface
     imgui.new_frame()
 
     imgui.begin("Controls")
     _, smoke_grid.show_grid = imgui.checkbox("Show Grid", smoke_grid.show_grid)
     _, smoke_grid.show_vectors = imgui.checkbox("Show Vectors", smoke_grid.show_vectors)
+    _, smoke_grid.show_fps = imgui.checkbox("Show FPS", smoke_grid.show_fps)
 
     changed, smoke_grid.smoke_color = imgui.color_edit3("Smoke Color", *smoke_grid.smoke_color)
 

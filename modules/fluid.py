@@ -39,6 +39,7 @@ class Fluid:
         # parameters on the gui
         self.show_grid = False
         self.show_vectors = False
+        self.show_fps = False
         self.smoke_color = 1., 1., 1.
     
         # opengl program for the smoke
