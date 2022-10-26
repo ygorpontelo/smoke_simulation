@@ -10,6 +10,10 @@ from numba import njit, prange
 # number of solver iterations
 n_iter = 25
 
+# which solver
+solver_gauss = False
+
+
 ##### Exposed funcs #####
 def solve_fields(dt, dx, dy, width, height, density_field, velocity_field):
     vel_step(dt, dx, dy, width, height, velocity_field)
@@ -62,27 +66,12 @@ def update_bnd_vel(original_field):
 
 
 ###### density funcs #####
-@njit(parallel=True)
-def difuse(dt, density_field):
-    s = density_field.shape
-    a = dt * 2.0
-    x0 = density_field.copy()
-
-    for i in prange(1, s[0]-1):
-        for j in range(1, s[1]-1):
-            density_field[i, j] = (
-                x0[i, j] + a *
-                (
-                    (x0[i-1, j] + x0[i+1, j] + x0[i, j-1] + x0[i, j+1])/(4.0)
-                )
-            ) / (1+a)
-
-@njit
 def difuse_step(dt, density_field):
     # solve system with n iterations
-    for it in range(n_iter):
-        difuse(dt/n_iter, density_field)
-        update_bnd(density_field)
+    if solver_gauss:
+        gauss_siedel(density_field, dt, 2.0)
+    else:
+        jacobi(density_field, dt, 2.0)
 
 @njit(parallel=True)
 def advect(dt, dx, dy, width, height, density_field, velocity_field):
@@ -135,27 +124,12 @@ def advect(dt, dx, dy, width, height, density_field, velocity_field):
 
 
 ##### velocity funcs #####
-@njit(parallel=True)
-def difuse_vel(dt, velocity_field):
-    s = velocity_field.shape
-    a = dt
-    x0 = velocity_field.copy()
-
-    for i in prange(1, s[0]-1):
-        for j in range(1, s[1]-1):
-            velocity_field[i, j] = (
-                x0[i, j] + a *
-                (
-                    (x0[i-1, j] + x0[i+1, j] + x0[i, j-1] + x0[i, j+1])/(4.0)
-                )
-            ) / (1+a)
-
-@njit
 def difuse_vel_step(dt, velocity_field):
     # solve system with n iterations
-    for it in range(n_iter):
-        difuse_vel(dt/n_iter, velocity_field)
-        update_bnd_vel(velocity_field)
+    if solver_gauss:
+        gauss_siedel(velocity_field, dt)
+    else:
+        jacobi(velocity_field, dt)
 
 @njit(parallel=True)
 def advect_vel(dt, dx, dy, width, height, velocity_field):
@@ -222,18 +196,10 @@ def project(dx, dy, velocity_field):
     update_bnd(prev_vel)
     
     # solve div system
-    for it in range(n_iter):
-        value = prev_vel.copy()
-        for i in prange(1, s[0]-1):  
-            for j in range(1, s[1]-1):
-                prev_vel[i, j][0] = ( 
-                    value[i-1, j][0] + 
-                    value[i+1, j][0] + 
-                    value[i, j-1][0] + 
-                    value[i, j+1][0] +
-                    value[i, j][1]
-                ) / 4.0
-        update_bnd(prev_vel)
+    if solver_gauss:
+        gauss_siedel_project(prev_vel)
+    else:
+        jacobi_project(prev_vel)
 
     for i in prange(1, s[0]-1):
         for j in range(1, s[1]-1):
@@ -244,8 +210,68 @@ def project(dx, dy, velocity_field):
 
 
 ##### Solvers #####
-def gauss_siedel():
-    ...
+@njit(parallel=True)
+def gauss_siedel(field_vector, dt, a_mod = 1.0):
+    s = field_vector.shape
+    a = dt/n_iter * a_mod
+    for it in range(n_iter):
+        x0 = field_vector.copy()
 
-def jacobi():
-    ...
+        for i in prange(1, s[0]-1):
+            for j in range(1, s[1]-1):
+                field_vector[i, j] = (
+                    x0[i, j] + a *
+                    (
+                        (field_vector[i-1, j] + field_vector[i+1, j] + field_vector[i, j-1] + field_vector[i, j+1])/(4.0)
+                    )
+                ) / (1+a)
+        update_bnd(field_vector)
+
+@njit(parallel=True)
+def gauss_siedel_project(field_vector):
+    s = field_vector.shape
+    for it in range(n_iter):
+        value = field_vector.copy()
+        for i in prange(1, s[0]-1):  
+            for j in range(1, s[1]-1):
+                field_vector[i, j][0] = ( 
+                    field_vector[i-1, j][0] + 
+                    field_vector[i+1, j][0] + 
+                    field_vector[i, j-1][0] + 
+                    field_vector[i, j+1][0] +
+                    value[i, j][1]
+                ) / 4.0
+        update_bnd(field_vector)
+
+@njit(parallel=True)
+def jacobi(field_vector, dt, a_mod = 1.0):
+    s = field_vector.shape
+    a = dt/n_iter * a_mod
+    for it in range(n_iter):
+        x0 = field_vector.copy()
+
+        for i in prange(1, s[0]-1):
+            for j in range(1, s[1]-1):
+                field_vector[i, j] = (
+                    x0[i, j] + a *
+                    (
+                        (x0[i-1, j] + x0[i+1, j] + x0[i, j-1] + x0[i, j+1])/(4.0)
+                    )
+                ) / (1+a)
+        update_bnd(field_vector)
+
+@njit(parallel=True)
+def jacobi_project(field_vector):
+    s = field_vector.shape
+    for it in range(n_iter):
+        value = field_vector.copy()
+        for i in prange(1, s[0]-1):  
+            for j in range(1, s[1]-1):
+                field_vector[i, j][0] = ( 
+                    value[i-1, j][0] + 
+                    value[i+1, j][0] + 
+                    value[i, j-1][0] + 
+                    value[i, j+1][0] +
+                    value[i, j][1]
+                ) / 4.0
+        update_bnd(field_vector)
